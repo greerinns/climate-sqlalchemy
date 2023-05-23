@@ -48,6 +48,8 @@ def welcome():
         f"Available Routes:<br/>"
         f"- /api/v1.0/precipitation : Dictionary containing most recent 12 months of precipitation data in the database (key format YYYY-MM-DD<br/>"
         f"- /api/v1.0/stations : List of stations involved in data collection<br/>"
+        f"- /api/v1.0/tobs : List of temperatures at the most active station over the most recent year of data<br/>"
+        f"- /api/v1.0/<start> : Given a start date in format YYYY-MM-DD, returns list of min, avg, and max temperatures from the start to the most recent date in the database<br/>"
         )
 
 @app.route('/api/v1.0/precipitation')
@@ -95,8 +97,22 @@ def tobs():
     # now can query for the most recent year of data at the most active station
     year_temp_most_active = session.query(Measurement.tobs)\
         .filter(Measurement.station == most_active).filter(Measurement.date > one_year_str).all()
-    tobs_data = list(year_temp_most_active)
-    return(jsonitobs_data)
+    tobs_data = year_temp_most_active
+    # flattening tuples into list and jsonifying
+    return jsonify(list(np.ravel(tobs_data))) 
+
+@app.route('/api/v1.0/<start>')
+def start(start):
+    #query based on start, returning min, avg, and max in json list
+    query_post_start = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).filter(Measurement.date > str(start)).all()
+    return jsonify(list(np.ravel(query_post_start)))
+
+@app.route('/api/v1.0/<start>/<end>')
+def start_end(start,end):
+    #query based on start, returning min, avg, and max in json list
+    query_start_end = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).filter(Measurement.date > str(start))\
+        .filter(Measurement.date < str(end)).all()
+    return jsonify(list(np.ravel(query_start_end)))
 
 session.close()
 
